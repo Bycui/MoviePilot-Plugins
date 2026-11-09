@@ -237,7 +237,7 @@ class HddolbyFixer(_PluginBase):
     # 插件图标
     plugin_icon = "Hddolby.png"
     # 插件版本
-    plugin_version = "1.0.2"
+    plugin_version = "1.0.3"
     # 插件标签
     plugin_label = "站点管理"
     # 插件作者
@@ -345,9 +345,9 @@ class HddolbyFixer(_PluginBase):
                                         "props": {
                                             "type": "info",
                                             "variant": "tonal",
-                                            "text": "启用后自动修补内置杜比模块的 API 地址，"
+                                            "text": "启用后立即生效，无需重启 MoviePilot。"
+                                                    "插件会自动修补内置杜比模块的 API 地址，"
                                                     "并把站点域名改回 hddolby.com 以匹配内置索引器。"
-                                                    "修改后建议重启 MoviePilot 让站点索引缓存重新加载。"
                                         }
                                     }
                                 ]
