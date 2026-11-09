@@ -63,6 +63,16 @@ def _ensure_trailing_slash(url: str) -> str:
     return url
 
 
+def _is_legacy_site_url(url: Optional[str]) -> bool:
+    """
+    判断站点地址是否仍指向已失效的旧域名。
+
+    :param url: 站点地址
+    :return: 是否属于旧域名
+    """
+    return StringUtils.get_url_domain(url or "") == _INDEXER_DOMAIN
+
+
 def _apply_runtime_patches() -> bool:
     """
     对内置杜比模块应用运行时补丁，重复调用保持幂等。
@@ -227,7 +237,7 @@ class HddolbyFixer(_PluginBase):
     # 插件图标
     plugin_icon = "Hddolby.png"
     # 插件版本
-    plugin_version = "1.0.1"
+    plugin_version = "1.0.2"
     # 插件标签
     plugin_label = "站点管理"
     # 插件作者
@@ -419,14 +429,18 @@ class HddolbyFixer(_PluginBase):
         try:
             oper = SiteOper()
             for site in oper.list():
-                if (site.domain or "").lower() != _NEW_DOMAIN:
-                    continue
-                payload: Dict[str, Any] = {"domain": _INDEXER_DOMAIN}
-                if not site.url:
-                    payload["url"] = _SITE_URL
-                oper.update(site.id, payload)
-                fixed.append(f"{site.name}(id={site.id}) → {_INDEXER_DOMAIN}")
-                logger.info(f"高清杜比适配：站点 {site.name} 域名 {_NEW_DOMAIN} 修正为 {_INDEXER_DOMAIN}")
+                domain = (site.domain or "").lower()
+                if domain == _NEW_DOMAIN:
+                    payload: Dict[str, Any] = {"domain": _INDEXER_DOMAIN}
+                    if not site.url:
+                        payload["url"] = _SITE_URL
+                    oper.update(site.id, payload)
+                    fixed.append(f"{site.name}(id={site.id}) → {_INDEXER_DOMAIN}")
+                    logger.info(f"高清杜比适配：站点 {site.name} 域名 {_NEW_DOMAIN} 修正为 {_INDEXER_DOMAIN}")
+                elif domain == _INDEXER_DOMAIN and _is_legacy_site_url(site.url):
+                    oper.update(site.id, {"url": _SITE_URL})
+                    fixed.append(f"{site.name}(id={site.id}) 站点地址 → {_SITE_URL}")
+                    logger.info(f"高清杜比适配：站点 {site.name} 地址修正为 {_SITE_URL}")
         except Exception as err:  # noqa: BLE001
             logger.error(f"高清杜比适配：修正站点域名失败，{err}")
         return fixed
