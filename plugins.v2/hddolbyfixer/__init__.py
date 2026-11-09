@@ -28,6 +28,7 @@ _SPIDER_PATCH_FLAG = "_hddolby_fixer_spider_patched"
 _PARSER_PATCH_FLAG = "_hddolby_fixer_parser_patched"
 _CHAIN_PATCH_FLAG = "_hddolby_fixer_chain_patched"
 _TORRENTS_PATCH_FLAG = "_hddolby_fixer_torrents_patched"
+_OPER_PATCH_FLAG = "_hddolby_fixer_oper_patched"
 
 # 原始方法引用，用于禁用插件时回滚
 _ORIGINALS: Dict[str, Any] = {}
@@ -125,6 +126,24 @@ def _apply_runtime_patches() -> bool:
 
         HDDolbySiteUserInfo._parse_site_page = patched_parse_site_page
         setattr(HDDolbySiteUserInfo, _PARSER_PATCH_FLAG, True)
+
+    if not getattr(SiteOper, _OPER_PATCH_FLAG, False):
+        original_update_userdata = SiteOper.update_userdata
+        _ORIGINALS["site_oper_update_userdata"] = original_update_userdata
+
+        def patched_update_userdata(self, domain: str, name: str, payload: dict):
+            """
+            把站点用户数据写入归一后的站点域名，避免写入站点列表中不存在的域名。
+
+            :param domain: 站点域名
+            :param name: 站点名称
+            :param payload: 用户数据
+            :return: 更新结果
+            """
+            return original_update_userdata(self, _normalize_indexer_domain(domain), name, payload)
+
+        SiteOper.update_userdata = patched_update_userdata
+        setattr(SiteOper, _OPER_PATCH_FLAG, True)
 
     return True
 
@@ -225,6 +244,9 @@ def _revert_runtime_patches() -> None:
             setattr(TorrentsChain, _TORRENTS_PATCH_FLAG, False)
         except Exception as err:  # noqa: BLE001
             logger.debug(f"高清杜比适配：撤销种子链补丁失败，{err}")
+    if _ORIGINALS.get("site_oper_update_userdata") is not None:
+        SiteOper.update_userdata = _ORIGINALS.pop("site_oper_update_userdata")
+        setattr(SiteOper, _OPER_PATCH_FLAG, False)
 
 
 class HddolbyFixer(_PluginBase):
@@ -237,7 +259,7 @@ class HddolbyFixer(_PluginBase):
     # 插件图标
     plugin_icon = "Hddolby.png"
     # 插件版本
-    plugin_version = "1.0.3"
+    plugin_version = "1.0.4"
     # 插件标签
     plugin_label = "站点管理"
     # 插件作者
